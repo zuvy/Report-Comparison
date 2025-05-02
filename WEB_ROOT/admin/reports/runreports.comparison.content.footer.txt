@@ -1,0 +1,8 @@
+<script>
+    var row = (`<tr>
+        <td><div class="report_icon" style="visibility:hidden;"></div><a href="./report_comparison.html">~[text:psx.htmlc.admin.reports.runreports.report_comparison_tool]</a></td>
+        <td>custom</td>
+        <td>~[text:psx.htmlc.admin.reports.runreports.compare_a_site_transportation_register_with_the_student_view_for]</td>
+    </tr>`);
+    $j("body table tr td:contains('~[text:psx.html.admin_reports.runreports.statistics]')").closest('tr').after(row);
+</script>

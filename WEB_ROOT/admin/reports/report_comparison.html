@@ -1,0 +1,532 @@
+<!--
+TemplateName:Admin
+-->
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Wave Comparison</title>
+<!-- required scripts -->
+	~[wc:commonscripts] 
+<!-- Required style sheets: screen.css, and print.css --> 
+	<link href="/images/css/screen.css" rel="stylesheet" media="screen">
+	<link href="/images/css/print.css" rel="stylesheet" media="print">
+
+	<script>
+	    // variables with a _s suffix are related to the student view data
+	    // variables with a _t suffix are related to the transportation register data
+	    // get_file reads the selected files and sends them to main
+
+var fg = {
+    table_t: [],
+    table_s: [],
+	    get_t: function () {
+	        input_t = document.getElementById('trans_t');
+            if (!input_t) {
+                alert("Um, couldn't find the fileinput element.");
+            }
+            else if (!input_t.files) {
+                alert("This browser doesn't seem to support the `files` property of file inputs.");
+            }
+            else if (!input_t.files[0]) {
+                alert("Please select a file before clicking 'Load'");               
+            }
+            else {
+                file_t = input_t.files[0];
+                fr_t = new FileReader();
+                fr_t.onloadend = fg.main_t;
+                fr_t.readAsText(file_t);
+            }
+	    },
+
+	        
+        get_s: function () {    
+            input_s = document.getElementById('s_view');
+            if (!input_s) {
+                alert("Um, couldn't find the fileinput element.");
+            }
+            else if (!input_s.files) {
+                alert("This browser doesn't seem to support the `files` property of file inputs.");
+            }
+            else if (!input_s.files[0]) {
+                alert("Please select a file before clicking 'Load'");               
+            }
+            else {
+                file_s = input_s.files[0];
+                fr_s = new FileReader();
+                fr_s.onloadend = fg.main_s;
+                fr_s.readAsText(file_s);
+            }
+        },
+            
+	    
+        
+        main_s: function () {
+            let table_a = fr_s.result;
+            
+            fg.table_s = fg.csv_json_s(table_a);
+            //console.log("student_view table");
+            //console.log(fg.table_s);
+            $j('#process').prop("disabled", false)
+            //$j('#load').replaceWith(button);
+        },
+        
+        main_t: function(){
+            let table_b = fr_t.result;
+            
+            table_b = fg.parse_h(table_b); // table_t back to html
+            
+            table_b = fg.html_csv(table_b);
+            
+            fg.table_t = fg.csv_json_t(table_b);
+            //console.log("transportation table")
+            //console.log(fg.table_t);
+        },
+        
+        parse_h: function(html) {
+            let parser = new DOMParser();
+            let table_b = parser.parseFromString(html, "text/html");
+            
+            return table_b;
+        },
+        
+        html_csv: function(doc) {
+            //console.log(doc);
+            let rows = [];
+            let cells = [];
+            let csv = "";
+            let table = doc.querySelectorAll("table tr");
+            
+            for(var i = 0; i < table.length; i++) {
+                var row = [], cols = table[i].querySelectorAll('td');
+                
+                for(var j = 0; j < cols.length; j++) {
+                    row.push(cols[j].innerText);
+                }
+                row.push('\n');
+                cells.push(row);
+            }
+            csv = cells.join(",")
+            
+            
+            for(let i = 0; i < csv.length; i++) {
+                if(csv[i] === '\n'){
+                    csv = csv.slice(0, i - 1,) + '\n' + csv.slice(i + 2);
+                }
+            }
+            
+            let table_b = csv.substr(1);
+            //console.log("table_t at end of htmlCSV = " + table_t);
+            return table_b;
+        },
+        
+        csv_json_t: function(csv_t){
+            //console.log("csv = " + csv)
+            
+            let array_t = [];
+            let headers = [];
+            let lines=csv_t.split('\n');
+            //console.log(lines);
+            if(lines[0].slice(0,14) == 'Transportation'){
+                //console.log("It's something completely transportation");
+                headers = lines[5].split(",");  // must be specifically set to the lines index of the student header row in the report
+                lines.unshift(headers);
+            }
+            else {
+                headers =lines[0].split(",");
+                //console.log(headers);
+            }
+          
+            if(headers[0] == 'Student Name'){
+                headers[0] = 'First Name';
+                headers.unshift('Last Name');
+            }
+            
+            for(let i = 0; i < headers.length; i ++) {
+                headers[i] = headers[i].replace(/ /g, '_');
+                headers[i] = headers[i].replace(/"/g,'');
+                //console.log("transportation_register headers = " + i + " " + headers[i]);
+            }
+            for(let i = 1; i < lines.length - 1; i++){
+        
+                let obj_t = {};
+                let currentline = lines[i]
+              
+                currentline = currentline.replace(/[" \r]+/g,'');
+              
+                currentline = currentline.split(",");
+                
+                for(let j = 0; j < headers.length; j++){
+                  obj_t[headers[j]] = currentline[j];
+                }
+                
+                array_t.push(obj_t);
+            }
+            return array_t;//JavaScript object
+            //return JSON.stringify(result); //JSON
+        },
+        
+        csv_json_s: function(csv_s){
+            //console.log("csv = " + csv)
+            let result = [];
+            let headers = [];
+            let lines=csv_s.split('\n');
+            //console.log(lines);
+            
+            headers=lines[0].split(",");
+                //console.log(headers);
+          
+            
+            for(let i = 0; i < headers.length; i ++) {
+                headers[i] = headers[i].replace(/ /g, '_');
+                headers[i] = headers[i].replace(/"/g,'');
+                // console.log("student_view headers = " + i + " " + headers[i]);
+            }
+            for(let i = 1; i < lines.length - 1; i++){
+        
+                let obj_s = {};
+                let currentline = lines[i]
+              
+                currentline = currentline.replace(/[" \r]+/g,'');
+              
+                currentline = currentline.split(",");
+                
+                for(let j = 0; j < headers.length; j++){
+                  obj_s[headers[j]] = currentline[j];
+                }
+                
+                result.push(obj_s);
+            }       
+            return result;//JavaScript object
+            //return JSON.stringify(result); //JSON
+        }
+}
+        
+	    var reset_button = 0;
+        var $tbdy = ``;
+        
+        function json_compare(reset_button) {
+            // collect number of membership days in school year
+            var mem_left_comp = $j('#mem_left').val();
+            var mem_year = $j('#mem_year').val();
+            $j('#load').prop('disabled', true);
+            $j('#select_button').prop('disabled', false);
+            $j('#process').prop('disabled', false);
+            
+            //console.log("mem_left_comp = " + mem_left_comp);
+            var process_mem = 0
+            // get json objects from the javascript fg object.
+            let table_t = fg.table_t;
+            let table_s = fg.table_s;
+            //console.log(table_s);
+            
+	        //console.log("process_mem = " + process_mem);
+	        //console.log("table_t = " + table_t + " table_s = " + table_s);
+	        //console.log("table_t length = " + table_t.length + " table_s length = " + table_s.length);
+            for(let i = 0; i < table_t.length; i++){
+                // outer loop starts with transportation register json object
+                let ob_t = table_t[i];
+                for(let j = 0; j < table_s.length; j++){
+                    let ob_s = table_s[j];
+                    // inner loop iterates through the Wave student view json object
+                    let mem_days_total = mem_year;
+                    
+                    let l_name_t = ob_t.Last_Name;
+                    let f_name_t = ob_t.First_Name;
+                    let number_t = ob_t.Student_ID;
+                    let trans_t = parseFloat(ob_t.Transported_State_Aid_Paid);
+                    let att_t = parseFloat(ob_t.Present);
+                    let mem_t = parseFloat(ob_t.Membership);
+                    
+                    let l_name_s = ob_s.LastName;
+                    let f_name_s = ob_s.FirstName;
+                    let number_s = ob_s.LocalID;
+                    let STN = ob_s.STN;
+                    let trans_s = parseFloat(ob_s.Transportation);
+                    let att_s = parseFloat(ob_s.Attendance);
+                    let mem_s = parseFloat(ob_s.Membership);
+                    let trans_diff = Math.abs(trans_t - trans_s);
+                    let att_diff = Math.abs(att_t - att_s);
+                    let mem_diff = Math.abs(mem_t - mem_s);
+                    let trans_display = trans_diff - mem_left_comp;
+                    if(mem_s == mem_days_total){mem_s = mem_days_total - mem_left_comp};
+                    if(number_t == number_s) {
+                        if(i < 50){
+                            //console.log("i = " + i + " j = " + j);
+                            // for(let key in ob_t){
+                            //     if((key == "Student_ID" && i >= 7) && key != undefined) {
+                            //     console.log(key + " --> " + ob_t.Student_ID + " table_t[i - 1].Student_ID = " + table_t[i - 1].Student_ID);
+                            //     } 
+                            // }
+                            //    console.log("------------------------------------------------------------")
+                        }
+                                                        //console.log("i = " + i + " trans_t.studentid = " + ob_t.Student_ID);
+                            // console.log("mem_s = " + mem_s + " mem_t = " + mem_t)
+                            // console.log("ob_s local_id = " + ob_s.LocalID);
+                            // console.log("trans_t = " + trans_t + " trans_s = " + trans_s);
+                            // console.log("att_t = " + att_t + " att_s = " + att_s);
+                            // console.log("trans_diff = " + trans_diff + " att_diff = " + att_diff);
+                            // console.log("------------------------------------------------------------")
+                    }
+                
+
+                    if(process_mem == 0){
+                        if((number_t == number_s) && ob_s.LocalID != undefined) {
+                            if((trans_diff != 0 && trans_diff != mem_left_comp) || (att_diff != 0 && att_diff != mem_left_comp)) {
+                            $tbdy = $tbdy + `<tr>
+                                <td>${ob_s.LastName}</td>
+                                <td>${ob_s.FirstName}</td>
+                                <td>${ob_s.LocalID}</td>
+                                <td>${ob_s.STN}</td>
+                                <td>${ob_s.Attendance}</td>
+                                <td>${ob_s.Transportation}</td>
+                                <td>${ob_s.Membership}</td>
+                                <td>${att_diff}</td>
+                                <td>${(trans_diff - mem_left_comp)}</td>
+                                <td>${mem_diff}</td>
+                                <td>${ob_t.Present}</td>
+                                <td>${ob_t.Transported_State_Aid_Paid}</td>
+                                <td>${ob_t.Membership}</td>
+                            </tr>`;
+                            }
+                        }
+                    }
+                }
+                if(i == table_t.length - 1) {
+                    let reset_btn = '<button id="reset" onclick="rb()">Reset Page</button>';
+                    $j('#select_div').append(reset_btn);
+                }
+            }
+            set_table($tbdy);
+        }
+        function rb() {
+            $j('#s_view').val('');
+            $j('#trans_t').val('');
+            $j('#result_data').empty();
+            $j('#load').prop('disabled', false);
+            $j('#process').prop('disabled', true);
+            $j('#select_button').prop('disabled', true);
+                    console.log("file element = " + $j('#s_view').val());
+            return 0;
+        }
+        
+        // make selection******************************************************************************************
+        
+        function html_csv() {
+            let ajaxResultArray = [];
+            let idsToRequest = "";
+            $j('#result_table tbody tr').each(function(){
+                idsToRequest = idsToRequest + ($j(this).find('td').eq(2).text()) + ",";
+            })
+            idsToRequest = idsToRequest.slice(0, -1);
+            let dataType = 'studentnumber';
+            
+    		if (idsToRequest != undefined) {
+    			$j.ajax({ 
+    				type: "POST",
+    				url: "/admin/multiselect.html",
+    				dataType: "html",
+    				data: "dt=" + dataType + "&ia=" + "X" + "&cs=" + "X" + "&data=" + idsToRequest + "&ps=" + "",
+    				cache: false,
+    				async: false
+    			}).done(function(html) {
+    			if (html.indexOf(",") != -1) {
+    				ajaxResultArray.push(html);
+    			}
+    			}).done(window.setTimeout(makeSelection(ajaxResultArray), 1000));
+        		}
+        }
+        
+        
+        function makeSelection (ajaxResultArray) {
+    		var idList = ajaxResultArray.join('').replace(/\r\n|\s/g,'');
+    		$j.ajax({ 
+    			type: "POST",
+    			url: "/admin/studentlist/functions.html",
+    			dataType: "html",
+    			data: "ac=buildsel;table=students;list=" + idList,
+    			cache: false,
+    			async: false
+    		}).done(function(html) {
+    			window.closeLoading();
+    			window.setTimeout(window.open("/admin/home.html","_blank"), 2000);
+    		})
+	    }
+	    
+	    function set_table ($tbdy) {
+            $j('#result_table tbody').append($tbdy);
+	    }
+
+	</script>
+	<script type="text/javascript">
+	;(function ($) {jQuery.fn.sortElements = (function(){
+ 
+    var sort = [].sort;
+ 
+    return function(comparator, getSortable) {
+ 
+        getSortable = getSortable || function(){return this;};
+ 
+        var placements = this.map(function(){
+ 
+            var sortElement = getSortable.call(this),
+                parentNode = sortElement.parentNode,
+ 
+                // Since the element itself will change position, we have
+                // to have some way of storing its original position in
+                // the DOM. The easiest way is to have a 'flag' node:
+                nextSibling = parentNode.insertBefore(
+                    document.createTextNode(''),
+                    sortElement.nextSibling
+                );
+ 
+            return function() {
+ 
+                if (parentNode === this) {
+                    throw new Error(
+                        "You can't sort elements if any one is a descendant of another."
+                    );
+                }
+ 
+                // Insert before flag:
+                parentNode.insertBefore(this, nextSibling);
+                // Remove flag:
+                parentNode.removeChild(nextSibling);
+ 
+            };
+ 
+        });
+ 
+        return sort.call(this, comparator).each(function(i){
+            placements[i].call(getSortable.call(this));
+        });
+ 
+    };
+ 
+})();
+	    $(function () {
+        var table = $('#result_table');
+        $('.sortable')
+        .wrapInner('<span title="sort this column"/>')
+        .each(function(){
+            var th = $(this),
+                thIndex = th.index(),
+                inverse = false;
+    
+            th.click(function(){
+    
+                table.find('td').filter(function(){
+    
+                    return $(this).index() === thIndex;
+    
+                }).sortElements(function(a, b){
+    
+                    if( $.text([a]) == $.text([b]) )
+                        return 0;
+    
+                    return $.text([a]) > $.text([b]) ?
+                        inverse ? -1 : 1
+                        : inverse ? 1 : -1;
+    
+                }, function(){
+    
+                    // parentNode is the element we want to move
+                    return this.parentNode; 
+    
+                });
+    
+                inverse = !inverse;
+    
+            });
+    
+        });
+	        
+	    });
+	})($j);
+
+    </script>
+</head> 
+<body> 
+	~[wc:admin_header_css] 
+    <!-- breadcrumb start -->Wave Comparison<!-- breadcrumb end --> 
+<!-- start of main menu and content --> 
+	~[wc:admin_navigation_css] 
+<!-- Start of Page --> 
+	<h1>Wave Comparison</h1> 
+<!-- start of content area --> 
+    <div class="feedback-info">
+        <h4>Instructions</h4>
+        <p>This page is designed to compare the Wave FQSR/ASR student view with the PowerSchool Transportation register.</p>
+        <p>In order to calculate differences between the report values accurately you must input the number of membership
+         days left in the term since the date that the report was completed. You must also enter the total number of membership days 
+         in the site's full year term.</p>
+         <p>Membership differences must be calculated separately from transportation and attendance differences using the compare mmembership checkbox.</p>
+         <p>The Wave Student View must be downloaded as a csv.</p>
+         <p>Once you click the load button, it will change to "Process" and you will click it again.</p>
+         <p>Use the "Make Selection" button to create a selection using the resulting student list.</p>
+         <p>Refresh the page to process another set of files</p>
+    </div>
+    <div class="box-round">
+    <div>
+        
+        ~[tlist_sql;
+        select SUM(dcd.membershipvalue)
+            FROM districtcalendarday dcd
+        	join districtcalendar dc on dc.id = dcd.districtcalendarid
+            AND dc.CalendarYear = 33
+        	and dcd.datevalue BETWEEN trunc(sysdate) AND to_date(dc.enddate) 
+        ]
+            <script>
+                var mem_days = '~(mem_days)';
+                document.write('<label>Remaining Membership Days</label><label>' + mem_days + '</label>');
+            </script>
+        [/tlist_sql]
+        <br>
+        <p><input type="text" id="mem_left" size="3">  Enter the number of membership days left in the school year <b><u>since the date the report was created</u></b>.</p>
+    </div>
+		 <h2>Select Files to Process</h2>
+    <div class="box-round">
+        <div>
+        <label>Transportation Report</label>&nbsp;&nbsp;<input type="file" id="trans_t" />
+        </div>
+        <br>
+        <div>
+		 <label>Wave student view csv</label>&nbsp;&nbsp;<input type="file" id="s_view" />
+		 </div>
+	</div>
+	<div cless="box-round" id="select_div">
+	    
+		 <button id="load" onclick="fg.get_s(), fg.get_t()">Load</button>
+		 <button id="process" onclick="json_compare()" disabled="true">process</button>
+		 <button onclick="html_csv()" id="select_button" disabled="true">Make Selection</button>
+	</div>
+	
+    </div>
+	
+	<div class="tableContainer" id="table-container">
+        <table border="0" cellpadding="0" cellspacing="0" id="result_table">
+	        <thead>
+	            <tr>
+	                <th class="sortable">Last Name</th>
+	                <th class="sortable">First Name</th>
+	                <th class="sortable">Student Number</th>
+	                <th class="sortable">STN</th>
+	                <th class="sortable">S.V. Attendance</th>
+	                <th class="sortable">S.V. Transportaton</th>
+	                <th class="sortable">S.V. Membership</th>
+	                <th class="sortable">Att Diff</th>
+	                <th class="sortable">Trans Diff</th>
+	                <th class="sortable">Mem Diff</th>
+	                <th class="sortable">PS Attendance</th>
+	                <th class="sortable">PS Transportation</th>
+	                <th class="sortable">PS Membership</th>
+	            </tr>
+	        </thead>
+	        <tbody id="r-data">
+	        </tbody>
+	        </table>
+	</div>
+	
+<!-- end of content area --> 
+	~[wc:admin_footer_css] 
+</body> 
+</html>
